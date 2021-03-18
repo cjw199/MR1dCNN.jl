@@ -39,6 +39,7 @@ Run `julia deps/build.jl` to activate the project and install all dependencies.
 From the REPL, load the project.
 
 `include("src/OneDCNN.jl")`
+
 `using .OneDCNN`
 
 Arguments are in an `Args` struct defined in OneDCNN.jl.  When loaded, the `args` object is created and arguments can be adjusted.  For example, to change the number of epochs from 10 (the default) to 20, use
