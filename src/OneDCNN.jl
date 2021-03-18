@@ -1,3 +1,5 @@
+module OneDCNN
+
 const DIR = @__DIR__
 using Pkg
 Pkg.activate(DIR*"/..")
@@ -147,6 +149,8 @@ tm = build_model([9,128,1], 3)
 d = DataLoader((rand(Float32, 9, 128, 1, 1), onehotbatch([2], [1,2,3]))) 
 training_function(tm, d, params(tm), ADAM(1e-3), Float32(.1), cpu, Progress(1))
 
+@info "Ready. Use fields in 'args' atruct to change parameter settings."
+
 # training function
 function train(args)
     #args = Args()
@@ -247,3 +251,5 @@ end
 if abspath(PROGRAM_FILE) == @__FILE__
     train(args)
 end
+
+end #module

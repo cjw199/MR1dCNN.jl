@@ -23,10 +23,10 @@ and express the data in feature maps that richly represent the activity types.  
 
 In this example, the data are structured as a 4th-order tensor of ***features*** x ***time steps*** x ***channels*** x ***examples***, so each input example is of dimension **9** x **128** x **1**. The kernels convolve over the time dimension and produce feature maps along the channel dimension.  Data augmentation is used as a regularizer, by means of random Gaussian noise.
 
-Train/test split can be adjusted via an arguments struct.
+Train/test split and various other parameters can be adjusted via an arguments struct.
 
 Training data can be logged using
-TensorBoardLogger to facilitate diagnostics using Tensorboard.  This feature is on by default in the argumnents struct.
+TensorBoardLogger to facilitate diagnostics using Tensorboard.  This feature is on by default and can be changed in the arguments struct.
 
 ## Usage
 
@@ -36,13 +36,17 @@ Run `julia deps/build.jl` to activate the project and install all dependencies.
 
 ### Running the demo
 
-Arguments are in an Args struct defined in OneDCNN.jl.  When run, an "args" object is created and arguments can be adjusted for different settings.  For example, to change the number of epochs to 20, 
+From the REPL, load the project.
 
-`args.epochs = 20`
+`include("src/OneDCNN.jl")`
 
-The demo can be run by 
+Arguments are in an `Args` struct defined in OneDCNN.jl.  When loaded, the `args` object is created and arguments can be adjusted.  For example, to change the number of epochs from 10 (the default) to 20, use
 
-`train(args)`
+`args.epochs = 20`.
+
+The demo itself can be run by 
+
+`train(args)`.
 
 The data will be automatically loaded and transformed, training executed, and (provided `args.save_model` remains set to `true`) save the best-performing model to an output directory,
 and (provided `args.tblogging` remains set to `true`) log model parameters and performance data on a per-epoch basis to a Tensorboard log file.
