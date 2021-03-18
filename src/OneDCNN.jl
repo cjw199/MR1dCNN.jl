@@ -20,6 +20,8 @@ using Random, Dates, DelimitedFiles
 #load data utlities for wrangling datasets
 include("DataUtils.jl")
 
+export Args, train, args
+
 mutable struct Args
     η::Float32 # learning rate
     ρ::Float32 # regularization paramater (for data augmentation)
@@ -40,7 +42,7 @@ mutable struct Args
     train_dir::String
     testdir::String
     Args() = new(
-        1e-3, 0.1, 32, 0.8, 10, 0, true, [9, 128, 1], (1,1,1), 6, 5, 10.0, 10, true, true, "output_" * Dates.format(now(), "Y-mm-dd-HMS"), "data/train", "data/test"
+        1e-3, 0.1, 32, 0.8, 10, 0, true, [9, 128, 1], (1,1,1), 6, 5, 10.0, 10, true, true, "output_" * Dates.format(now(), "Y-mm-dd-HMS"), DIR*"/../data/train", DIR*"/../data/test"
     )
 end
 
