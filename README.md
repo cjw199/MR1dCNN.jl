@@ -32,7 +32,11 @@ TensorBoardLogger to facilitate diagnostics using Tensorboard.  This feature is 
 
 ### Setup
 
-Run `julia deps/build.jl` to activate the project and install all dependencies.
+From the project directory, run
+
+`julia -e "using Pkg; Pkg.activate(\".\"); Pkg.build();"`
+
+ to activate the project and install all dependencies.
 
 ### Running the demo
 
