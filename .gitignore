@@ -23,4 +23,8 @@ docs/site/
 # environment.
 Manifest.toml
 
+# machine-specific
 .DS_Store
+
+# model outputs
+output_*
