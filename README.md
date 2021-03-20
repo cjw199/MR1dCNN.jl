@@ -40,22 +40,37 @@ From the project directory, run
 
 ### Running the demo
 
+#### Quickstart
+
 From the REPL, load the project.
 
 `include("src/OneDCNN.jl")`
 
 `using .OneDCNN`
 
+For a quick start with default parameters and model architecture, the demo itself can be run by 
+
+`train(args, arch)`.
+
+This training function takes two arguments: the training parameters object (here, `args`) and the model architecture definition (here, `arch`).
+The data will be automatically loaded and transformed, training executed, and (provided `args.save_model` remains set to `true`) save the best-performing model to an output directory.  It will also (provided `args.tblogging` remains set to `true`) log model parameters and performance data on a per-epoch basis to a Tensorboard log file.
+
+#### Basic Usage
+
 Arguments are in an `Args` struct defined in OneDCNN.jl.  When loaded, the `args` object is created and arguments can be adjusted.  For example, to change the number of epochs from 10 (the default) to 20, use
 
 `args.epochs = 20`.
 
-The demo itself can be run by 
+The model architecture is contained in a named tuple of `LayerDef` structs defined in ModelUtilities.jl.  To construct your own model architecture to use with the demo, use the `LayerDef` constructor and `ModelUtilities.create_model_arch` method.  For example, 
+```
+layer1 = ModelUtilities.LayerDef((9,5), 1, 16, (0,2), 2, (1,2))
+layer2 = ModelUtilities.LayerDef((1,3), 16, 32, (0,1), 2, (1,2))
 
-`train(args)`.
+arch = ModelUtilities.create_model_arch(layer1, layer2)
+```
+Then pass the `arch` tuple as an argumnent to `train`.
 
-The data will be automatically loaded and transformed, training executed, and (provided `args.save_model` remains set to `true`) save the best-performing model to an output directory,
-and (provided `args.tblogging` remains set to `true`) log model parameters and performance data on a per-epoch basis to a Tensorboard log file.
+#### TensoBoard Logging
 
 The logged data can be visualized by running the following command (assuming you have installed Tensorboard via pip):
 ```

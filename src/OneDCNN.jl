@@ -17,10 +17,11 @@ using ProgressMeter: Progress, next!
 using TensorBoardLogger: TBLogger, tb_overwrite
 using Random, Dates, DelimitedFiles
 
-#load data utlities for wrangling datasets
+#load data utilities for wrangling datasets and model building
 include("DataUtils.jl")
+include("ModelUtilities.jl")
 
-export Args, train, args
+export Args, train, args, arch
 
 mutable struct Args
     η::Float32 # learning rate
@@ -42,33 +43,17 @@ mutable struct Args
     train_dir::String
     testdir::String
     Args() = new(
-        1e-3, 0.1, 32, 0.8, 10, 0, true, [9, 128, 1], (1,1,1), 6, 5, 10.0, 10, true, true, "output_" * Dates.format(now(), "Y-mm-dd-HMS"), DIR*"/../data/train", DIR*"/../data/test"
+        1e-3, 0.01, 32, 0.8, 10, 0, true, [9, 128, 1], (1,1,1), 6, 5, 10.0, 10, true, true, "output_" * Dates.format(now(), "Y-mm-dd-HMS"), DIR*"/../data/train", DIR*"/../data/test"
     )
 end
 
 args = Args()
 
-function output_dims(indims::Array{N}, kerndims::Array{N}, pad::Array{N}, stride::N, pool::Array{N}) where N <: Int
-    Int.(floor.((((indims - kerndims + 2 .* pad) ./ stride) .+ 1) ./ pool))
-end
+layer1 = ModelUtilities.LayerDef((9,5), 1, 16, (0,2), 2, (1,2))
+layer2 = ModelUtilities.LayerDef((1,3), 16, 32, (0,1), 2, (1,2))
+layer3 = ModelUtilities.LayerDef((1,3), 32, 64, (0,1), 2, (1,1))
 
-function calculate_output_size(input_dims::Array{N}) where N <: Int
-    l1 = output_dims(input_dims, [input_dims[1], 5], [0,2], 2, [1, 2]) 
-    l2 = output_dims(l1, [1,3], [0,1], 2, [1, 2]) 
-    l3 = output_dims(l2, [1,3], [0,1], 2, [1, 1])
-end
-
-function build_model(input_size, nclasses)
-    latent_size = prod(calculate_output_size(input_size[1:2])) * 64
-    return Chain(
-    Conv((input_size[1], 5), input_size[3]=>16, stride=2, pad=(0,2), swish),
-    MaxPool((1,2)),
-    Conv((1, 3), 16=>32, pad=(0,1), stride=2, swish),
-    MaxPool((1,2)),
-    Conv((1,3), 32=>64, pad=(0,1), stride=2, swish),
-    flatten,
-    Dense(latent_size, nclasses))
-end
+arch = ModelUtilities.create_model_arch(layer1, layer2, layer3)
 
 function cast_param(x::A, param::T) where A <:AbstractArray{T} where T <: Real
     convert(eltype(x), param)
@@ -146,15 +131,15 @@ function training_function(model::Flux.Chain, Xs::Flux.Data.DataLoader, params::
 end
 
 ## model burn-in
-@info "Compiling model"
-tm = build_model([9,128,1], 3)
+@info "Precompiling training function"
+tm = ModelUtilities.build_model([9,128,1], arch, 3, silent = true)
 d = DataLoader((rand(Float32, 9, 128, 1, 1), onehotbatch([2], [1,2,3]))) 
 training_function(tm, d, params(tm), ADAM(1e-3), Float32(.1), cpu, Progress(1))
 
-@info "Ready. Use fields in 'args' atruct to change parameter settings."
+@info "Ready. Use fields in 'args' struct to change parameter settings."
 
 # training function
-function train(args)
+function train(args, arch)
     #args = Args()
     args.seed > 0 && Random.seed!(args.seed)
 
@@ -171,9 +156,9 @@ function train(args)
     train_data, val_data = DataUtils.get_train_validation(DataUtils.data_prep(args.train_dir), readdlm(args.train_dir * "/y_train.txt", Int), args.batch_size, args.train_prop, device)
 
     # initialize model
-    m = build_model(args.input_dims, args.nclasses)
-    m = m |> device
-    best_model = build_model(args.input_dims, args.nclasses)
+    m = ModelUtilities.build_model(args.input_dims, arch, args.nclasses);
+    m = m |> device;
+    best_model = ModelUtilities.build_model(args.input_dims, arch, args.nclasses, silent = true);
 
     #optimizer
     opt = ADAM(args.η)
