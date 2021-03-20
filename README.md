@@ -68,7 +68,7 @@ layer2 = ModelUtilities.LayerDef((1,3), 16, 32, (0,1), 2, (1,2))
 
 arch = ModelUtilities.create_model_arch(layer1, layer2)
 ```
-Then pass the `arch` tuple as an argumnent to `train`.
+Then pass the `arch` tuple as an argument to `train`.
 
 #### TensoBoard Logging
 
