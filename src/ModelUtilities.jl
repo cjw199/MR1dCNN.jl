@@ -3,13 +3,13 @@ module ModelUtilities
 using Flux
 export LayerDef, create_model_arch, output_dims, calculate_final_outdims, create_model
 
-struct LayerDef
-    kernel
-    channels
-    pad
-    stride
-    pool
-    LayerDef(kernel, in_channels, out_channels, pad, stride, pool) = new(
+mutable struct LayerDef{T, P, A}
+    kernel::T
+    channels::P
+    pad::T
+    stride::A
+    pool::T
+    LayerDef(kernel::Tuple, in_channels::Int, out_channels::Int, pad::Tuple, stride::Int, pool::Tuple) = new{Tuple, Pair, Int}(
         kernel,
         Pair(in_channels, out_channels),
         pad,
@@ -18,7 +18,7 @@ struct LayerDef
     )
 end
 
-function create_model_arch(layers...)
+function create_model_arch(layers::LayerDef...)::NamedTuple
     names = []
     for i = 1:length(layers)
         push!(names, "layer"*string(i))
@@ -27,11 +27,11 @@ function create_model_arch(layers...)
     return NamedTuple{n}(layers)
 end
 
-function output_dims(indims, kerndims, pad, stride, pool)
+function output_dims(indims::Array{T,1}, kerndims::Tuple{T,T}, pad::Tuple{T,T}, stride::T, pool::Tuple{T,T}) where T<:Int
     Int.(floor.((((indims .- kerndims .+ 2 .* pad) ./ stride) .+ 1) ./ pool))
 end
 
-function calculate_final_outdims(indims, arch, silent)
+function calculate_final_outdims(indims::Array{T,1}, arch::NamedTuple, silent::Bool) where T<:Int
     silent || @info "Input dims: " * string(indims)
     for (i, k) in enumerate(arch)
         indims = output_dims(indims[1:2], k.kernel, k.pad, k.stride, k.pool)
@@ -41,12 +41,12 @@ function calculate_final_outdims(indims, arch, silent)
     return prod(indims)
 end
 
-function make_layer(layers, layer)
+function make_layer(layers::Array, layer::LayerDef)
     push!(layers, Conv(tuple(layer.kernel...), layer.channels, stride=layer.stride, pad=layer.pad, swish))
     sum(layer.pool .> 1) > 0 && push!(layers, MaxPool(layer.pool))
 end
 
-function build_model(input_size, arch, nclasses ; silent = false)
+function build_model(input_size::Array{T,1}, arch::NamedTuple, nclasses::Int ; silent::Bool = false) where T<:Int
     latent_size = calculate_final_outdims(input_size, arch, silent)
     l = []
     for i = 1:length(arch)

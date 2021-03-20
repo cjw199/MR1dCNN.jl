@@ -43,7 +43,7 @@ mutable struct Args
     train_dir::String
     testdir::String
     Args() = new(
-        1e-3, 0.01, 32, 0.8, 10, 0, true, [9, 128, 1], (1,1,1), 6, 5, 10.0, 10, true, true, "output_" * Dates.format(now(), "Y-mm-dd-HMS"), DIR*"/../data/train", DIR*"/../data/test"
+        1e-3, 0.001, 32, 0.8, 10, 0, true, [9, 128, 1], (1,1,1), 6, 5, 10.0, 10, true, true, "output_" * Dates.format(now(), "Y-mm-dd-HMS"), DIR*"/../data/train", DIR*"/../data/test"
     )
 end
 
@@ -55,7 +55,7 @@ layer3 = ModelUtilities.LayerDef((1,3), 32, 64, (0,1), 2, (1,1))
 
 arch = ModelUtilities.create_model_arch(layer1, layer2, layer3)
 
-function cast_param(x::A, param::T) where A <:AbstractArray{T} where T <: Real
+function cast_param(x::A, param::T) where A<:AbstractArray{T} where T <: Real
     convert(eltype(x), param)
 end
 
@@ -139,7 +139,7 @@ training_function(tm, d, params(tm), ADAM(1e-3), Float32(.1), cpu, Progress(1))
 @info "Ready. Use fields in 'args' struct to change parameter settings."
 
 # training function
-function train(args, arch)
+function train(args::Args, arch::NamedTuple)
     #args = Args()
     args.seed > 0 && Random.seed!(args.seed)
 
