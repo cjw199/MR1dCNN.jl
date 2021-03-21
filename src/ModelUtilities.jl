@@ -1,5 +1,3 @@
-module ModelUtilities
-
 using Flux
 export LayerDef, create_model_arch, output_dims, calculate_final_outdims, create_model
 
@@ -16,6 +14,16 @@ mutable struct LayerDef{T, P, A}
         stride,
         pool
     )
+end
+
+mutable struct Model
+    model1
+    model2
+    model3
+end
+
+function (M::Model)(x)
+    return M.model1(x), M.model2(x), M.model3(x)
 end
 
 function create_model_arch(layers::LayerDef...)::NamedTuple
@@ -56,4 +64,10 @@ function build_model(input_size::Array{T,1}, arch::NamedTuple, nclasses::Int ; s
     return Chain(l...)
 end
 
-end #module
+function build_Model(input_size::Array{T,1}, archs::Array, nclasses::Int ; silent::Bool = false) where T<:Int  
+    out = []
+    for arch in archs
+        push!(out, build_model(input_size, arch, nclasses; silent))
+    end
+    Model(out[1], out[2], out[3])
+end
