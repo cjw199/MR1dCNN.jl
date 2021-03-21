@@ -1,5 +1,3 @@
-using Flux
-
 model1 = create_model_arch(
     LayerDef((9,3), 1, 8, (0,1), 1, (1,2)),
     LayerDef((1,3), 8, 16, (0,1), 1, (1,2)),
