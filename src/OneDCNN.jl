@@ -20,7 +20,7 @@ using Random, Dates, DelimitedFiles
 #load data utilities for wrangling datasets and model building
 include("DataUtils.jl")
 include("ModelUtilities.jl")
-include("Mod2.jl")
+include("Arch.jl")
 
 export Args, train, args, archs
 
@@ -87,7 +87,6 @@ function accuracy(data::DataLoader, model::Model)
     acc = 0
     for (x, y) in data
         out = softmax(sum(model(x)) ./ 3)
-        @show out
         acc += sum(onecold(out) .== onecold(cpu(y))) * 1 / size(x,4)
     end
     acc/length(data)
@@ -155,7 +154,7 @@ function train(args::Args, archs)
     train_data, val_data = DataUtils.get_train_validation(DataUtils.data_prep(args.train_dir), readdlm(args.train_dir * "/y_train.txt", Int), args.batch_size, args.train_prop, device)
 
     # initialize model
-    m = build_Model(args.input_dims, archs, args.nclasses, silent=false)
+    m = build_Model(args.input_dims, archs, args.nclasses, silent=true)
     best_model = build_Model(args.input_dims, deepcopy(archs), args.nclasses, silent=true)
 
     #optimizer

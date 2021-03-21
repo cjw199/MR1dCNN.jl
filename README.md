@@ -1,4 +1,4 @@
-# OneDConv.jl
+# Multi-Resolution One-Dimensional Convolutional Neural Network
 ## Overview
 
 This example demonstrates the use of a 1-dimensional multi-resolution convolutional neural network (CNN) to classify human activity from time-resolved data using Julia and the Flux machine learning library.  The data are from the Human Activity Recognition (HAR) Using Smartphone Dataset from the study described in the paper:
