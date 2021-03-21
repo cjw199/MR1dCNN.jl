@@ -1,7 +1,7 @@
 # OneDConv.jl
 ## Overview
 
-This example demonstrates the use of a 1-dimensional convolutional neural network (CNN) to classify human activity from time-resolved data using Julia and the Flux machine learning library.  The data are from the Human Activity Recognition (HAR) Using Smartphone Dataset from the study described in the paper:
+This example demonstrates the use of a 1-dimensional multi-resolution convolutional neural network (CNN) to classify human activity from time-resolved data using Julia and the Flux machine learning library.  The data are from the Human Activity Recognition (HAR) Using Smartphone Dataset from the study described in the paper:
 > Davide Anguita, Alessandro Ghio, Luca Oneto, Xavier Parra and Jorge L. Reyes-Ortiz. Human Activity Recognition on Smartphones using a Multiclass Hardware-Friendly Support Vector Machine. International Workshop of Ambient Assisted Living (IWAAL 2012). Vitoria-Gasteiz, Spain. Dec 2012
 
 Data were collected on an experimental group performing six activities (walking, walking upstairs,walking downstairs, sitting, standing, and laying) while wearing smartphones.  The captured sensor signals were used to create a dataset of tri-axial linear acceleration
@@ -16,8 +16,9 @@ CNN model.
 
 ## Motivation
 
-The motivating idea behind using a CNN on sequence data is analogous to its implementation in the context of image recognition.  The convolution operation can abstract away from the raw input
-and express the data in feature maps that richly represent the activity types.  These feature maps can greatly enhance the representational power of the model.  By setting the kernel height to encompass all features with no vertical padding, the convolution operation is constrained to operate along the temporal axis, thereby capturing the sequential and dynamic structure of the data.
+The motivating idea behind using a CNN on sequence data is analogous to its implementation in the context of image recognition.  The convolution operation can abstract away from the raw input and express the data in feature maps that richly represent the activity types.  These feature maps can greatly enhance the representational power of the model.  By setting the kernel height to encompass all features with no vertical padding, the convolution operation is constrained to operate along the temporal axis, thereby capturing the sequential and dynamic structure of the data.
+
+Yet, a multivariate time series dataset can exhibit patterns at multiple levels of temoral resolution.  A single initial kernel pass over the series may not capture all of the inherent temporal structure of the data.  Therefore, this approach combines the outputs of multiple CNNs that convolve over the time dimension with increasing levels of temporal abstraction.  That is to say, the most granular model uses relatively small kernels and strides, whereas the most general uses relatively large kernels and strides.  The model outputs feed a composite loss function, and accuracy is calculated by taking the softmax of the mean of model outputs.
 
 ## Methodological Notes
 
@@ -50,9 +51,9 @@ From the REPL, load the project.
 
 For a quick start with default parameters and model architecture, the demo itself can be run by 
 
-`train(args, arch)`.
+`train(args, archs)`.
 
-This training function takes two arguments: the training parameters object (here, `args`) and the model architecture definition (here, `arch`).
+This training function takes two arguments: the training parameters object (here, `args`) and the model architecture definition (here, `archs`).
 The data will be automatically loaded and transformed, training executed, and (provided `args.save_model` remains set to `true`) save the best-performing model to an output directory.  It will also (provided `args.tblogging` remains set to `true`) log model parameters and performance data on a per-epoch basis to a Tensorboard log file.
 
 #### Basic Usage
@@ -61,14 +62,11 @@ Arguments are in an `Args` struct defined in OneDCNN.jl.  When loaded, the `args
 
 `args.epochs = 20`.
 
-The model architecture is contained in a named tuple of `LayerDef` structs defined in ModelUtilities.jl.  To construct your own model architecture to use with the demo, use the `LayerDef` constructor and `ModelUtilities.create_model_arch` method.  For example, 
-```
-layer1 = ModelUtilities.LayerDef((9,5), 1, 16, (0,2), 2, (1,2))
-layer2 = ModelUtilities.LayerDef((1,3), 16, 32, (0,1), 2, (1,2))
+The model architecture is contained in an array of named tuples of `LayerDef` structs defined in ModelUtilities.jl. The models architectures are defined in `Arch.jl`. To construct your own model architecture to use with the demo, use `Arch.jl` and `createArch()`.  The `LayerDef` constructor arguments can be found in `ModelUtilities.jl`.  For example, to change model definitons, edit `Arch.jl` to reflect the destired changes. Then save and run
 
-arch = ModelUtilities.create_model_arch(layer1, layer2)
-```
-Then pass the `arch` tuple as an argument to `train`.
+`createArch()`.
+
+Then pass the `archs` array as the second argument to `train`.
 
 #### TensoBoard Logging
 

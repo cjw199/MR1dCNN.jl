@@ -20,8 +20,9 @@ using Random, Dates, DelimitedFiles
 #load data utilities for wrangling datasets and model building
 include("DataUtils.jl")
 include("ModelUtilities.jl")
+include("Mod2.jl")
 
-export Args, train, args, arch
+export Args, train, args, archs
 
 mutable struct Args
     η::Float32 # learning rate
@@ -43,17 +44,12 @@ mutable struct Args
     train_dir::String
     testdir::String
     Args() = new(
-        1e-3, 0.001, 32, 0.8, 10, 0, true, [9, 128, 1], (1,1,1), 6, 5, 10.0, 10, true, true, "output_" * Dates.format(now(), "Y-mm-dd-HMS"), DIR*"/../data/train", DIR*"/../data/test"
+        1e-3, 1e-4, 32, 0.8, 10, 0, true, [9, 128, 1], (1,1,1), 6, 5, 10.0, 10, true, true, "output_" * Dates.format(now(), "Y-mm-dd-HMS"), DIR*"/../data/train", DIR*"/../data/test"
     )
 end
 
 args = Args()
-
-layer1 = ModelUtilities.LayerDef((9,5), 1, 16, (0,2), 2, (1,2))
-layer2 = ModelUtilities.LayerDef((1,3), 16, 32, (0,1), 2, (1,2))
-layer3 = ModelUtilities.LayerDef((1,3), 32, 64, (0,1), 2, (1,1))
-
-arch = ModelUtilities.create_model_arch(layer1, layer2, layer3)
+archs = getArch()
 
 function cast_param(x::A, param::T) where A<:AbstractArray{T} where T <: Real
     convert(eltype(x), param)
@@ -70,25 +66,29 @@ function augment(x::A, ρ::T, device) where A<:AbstractArray{T} where T<:Real
 end
 
 # training loss 
-function model_loss(x::A, y::B, model::C, ρ::T, device) where {C<:Chain, A<:AbstractArray, B<:AbstractArray, T<:Real}
-    l = logitcrossentropy(model(augment(x, ρ, device)), y)
+function model_loss(x::A, y::B, model::Model, ρ::T, device) where {C<:Chain, A<:AbstractArray, B<:AbstractArray, T<:Real}
+    ŷ1, ŷ2, ŷ3  = model(augment(x, ρ, device))
+    l = logitcrossentropy(ŷ1, y) + logitcrossentropy(ŷ2, y) + logitcrossentropy(ŷ3, y)
 end
 
 # loss over data
-function total_loss(data::DataLoader, model::Chain)
+function total_loss(data::DataLoader, model::Model)
     l = 0f0
     for (x, y) in data
-        l += logitcrossentropy(model(x), y)
+        ŷ1, ŷ2, ŷ3  = model(x)
+        l += logitcrossentropy(ŷ1, y) + logitcrossentropy(ŷ2, y) + logitcrossentropy(ŷ3, y)
     end
     l = l/length(data)
     return l
 end
 
 #accuracy over data
-function accuracy(data::DataLoader, model::Chain)
+function accuracy(data::DataLoader, model::Model)
     acc = 0
     for (x, y) in data
-        acc += sum(onecold(cpu(model(x))) .== onecold(cpu(y))) * 1 / size(x,4)
+        out = softmax(sum(model(x)) ./ 3)
+        @show out
+        acc += sum(onecold(out) .== onecold(cpu(y))) * 1 / size(x,4)
     end
     acc/length(data)
 end
@@ -121,7 +121,7 @@ function TBCallback(logger, train_data, val_data, model)
   end
 end
 
-function training_function(model::Flux.Chain, Xs::Flux.Data.DataLoader, params::Flux.Zygote.Params, opt::ADAM, ρ::N, device, progress) where {N<:Real}
+function training_function(model, Xs::Flux.Data.DataLoader, params::Flux.Zygote.Params, opt::ADAM, ρ::N, device, progress) where {N<:Real}
     for (xs, ys) in Xs
         train_loss, back = Flux.pullback(() -> model_loss(xs, ys, model, ρ, device), params)
         grad = back(one(train_loss))
@@ -132,14 +132,14 @@ end
 
 ## model burn-in
 @info "Precompiling training function"
-tm = ModelUtilities.build_model([9,128,1], arch, 3, silent = true)
-d = DataLoader((rand(Float32, 9, 128, 1, 1), onehotbatch([2], [1,2,3]))) 
-training_function(tm, d, params(tm), ADAM(1e-3), Float32(.1), cpu, Progress(1))
+tm = build_Model([9,128,1], archs, 6, silent = true)
+d = DataLoader((rand(Float32, 9, 128, 1, 1), onehotbatch([2], [1,2,3,4,5,6]))) 
+training_function(tm, d, params(tm.model1, tm.model2, tm.model3), ADAM(1e-3), Float32(.1), cpu, Progress(1))
 
 @info "Ready. Use fields in 'args' struct to change parameter settings."
 
 # training function
-function train(args::Args, arch::NamedTuple)
+function train(args::Args, archs)
     #args = Args()
     args.seed > 0 && Random.seed!(args.seed)
 
@@ -152,13 +152,11 @@ function train(args::Args, arch::NamedTuple)
     end
      
     # load data
-    # train_data, val_data = DataUtils.get_train_validation(xtrain, ytrain, args.batch_size, args.train_prop, device)
     train_data, val_data = DataUtils.get_train_validation(DataUtils.data_prep(args.train_dir), readdlm(args.train_dir * "/y_train.txt", Int), args.batch_size, args.train_prop, device)
 
     # initialize model
-    m = ModelUtilities.build_model(args.input_dims, arch, args.nclasses);
-    m = m |> device;
-    best_model = ModelUtilities.build_model(args.input_dims, arch, args.nclasses, silent = true);
+    m = build_Model(args.input_dims, archs, args.nclasses, silent=false)
+    best_model = build_Model(args.input_dims, deepcopy(archs), args.nclasses, silent=true)
 
     #optimizer
     opt = ADAM(args.η)
@@ -166,7 +164,7 @@ function train(args::Args, arch::NamedTuple)
     ρ = cast_param(train_data.data[1], args.ρ)
 
     # parameters
-    ps = Flux.params(m)
+    ps = Flux.params(m.model1, m.model2, m.model3)
 
     # make path for model storage and log output
     !ispath(args.save_path) && mkpath(args.save_path)
