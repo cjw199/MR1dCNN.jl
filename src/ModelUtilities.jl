@@ -71,3 +71,7 @@ function build_Model(input_size::Array{T,1}, archs::Array, nclasses::Int ; silen
     end
     Model(out[1], out[2], out[3])
 end
+
+function load_model(m)
+    Model(m[:model].model1, m[:model].model2, m[:model].model3)
+end

@@ -53,7 +53,7 @@ function get_test_set(X, Y, device, shuffle=true)
     X_test = X |> device
     Y_test = Flux.onehotbatch(reshape(Y, size(Y, 1)), classes) |> device
     
-    X_test = reshape(X_test, size(X_test,1), size(X_test,2), 1, size(X_test,3))
+    #X_test = reshape(X_test, size(X_test,1), size(X_test,2), 1, size(X_test,3))
     test_set = DataLoader((X_test, Y_test), batchsize=size(Y, 2), shuffle=shuffle)
 
     return test_set
