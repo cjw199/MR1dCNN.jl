@@ -1,4 +1,4 @@
-name = "OneDCNN"
+name = "MR1dCNN"
 uuid = "d8e75d96-6906-4cca-996a-c61058ed7a11"
 authors = ["cjw199 <walker.corey@gmail.com>"]
 version = "0.1.0"
