@@ -17,3 +17,4 @@ model3 = create_model_arch(
 function getArch()
     [model1, model2, model3]
 end
+

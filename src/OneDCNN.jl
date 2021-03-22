@@ -22,7 +22,7 @@ include("DataUtils.jl")
 include("ModelUtilities.jl")
 include("Arch.jl")
 
-export Args, train, args, archs
+export Args, train, args, archs, test
 
 mutable struct Args
     η::Float32 # learning rate
@@ -232,8 +232,12 @@ function train(args::Args, archs)
     return nothing
 end
 
-if abspath(PROGRAM_FILE) == @__FILE__
-    train(args)
+function test(model_path)
+    saved_model = BSON.load(model_path)
+    model = load_model(saved_model)
+
+    test_data = DataUtils.get_test_set(DataUtils.data_prep(DIR*"/../data/test"), readdlm(DIR*"/../data/test/y_test.txt"), cpu)
+    accuracy(test_data, model)
 end
 
 end #module
