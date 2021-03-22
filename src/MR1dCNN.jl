@@ -1,4 +1,4 @@
-module OneDCNN
+module MR1dCNN
 
 const DIR = @__DIR__
 using Pkg

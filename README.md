@@ -87,6 +87,12 @@ Testing data is provided in the data directory, and the saved model can be used 
 
 ## Results
 
-To test on the included testing set, run `OneDCNN.test <path to saved model>`. 
+To test on the included testing set, run
+
+ ```
+using Flux
+
+OneDCNN.test <path to saved model>
+```
 
 You should be able to achieve at or above 95% training accuracy in 10 epochs, and over 90% test accuracy using the demo code and default arguments.
