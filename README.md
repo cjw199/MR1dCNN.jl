@@ -45,9 +45,9 @@ From the project directory, run
 
 From the REPL, load the project.
 
-`include("src/OneDCNN.jl")`
+`include("src/MR1dCNN.jl")`
 
-`using .OneDCNN`
+`using .MR1dCNN`
 
 For a quick start with default parameters and model architecture, the demo itself can be run by 
 
@@ -58,11 +58,11 @@ The data will be automatically loaded and transformed, training executed, and (p
 
 #### Basic Usage
 
-Arguments are in an `Args` struct defined in OneDCNN.jl.  When loaded, the `args` object is created and arguments can be adjusted.  For example, to change the number of epochs from 10 (the default) to 20, use
+Arguments are in an `Args` struct defined in `MR1dCNN.jl`.  When loaded, the `args` object is created and arguments can be adjusted.  For example, to change the number of epochs from 10 (the default) to 20, use
 
 `args.epochs = 20`.
 
-The model architecture is contained in an array of named tuples of `LayerDef` structs defined in ModelUtilities.jl. The models architectures are defined in `Arch.jl`. To construct your own model architecture to use with the demo, use `Arch.jl` and `createArch()`.  The `LayerDef` constructor arguments can be found in `ModelUtilities.jl`.  For example, to change model definitons, edit `Arch.jl` to reflect the destired changes. Then save and run
+The model architecture is contained in an array of named tuples of `LayerDef` structs defined in `ModelUtilities.jl`. The models architectures are defined in `Arch.jl`. To construct your own model architecture to use with the demo, use `Arch.jl` and `createArch()`.  The `LayerDef` constructor arguments can be found in `ModelUtilities.jl`.  For example, to change model definitons, edit `Arch.jl` to reflect the destired changes. Then save and run
 
 `createArch()`.
 
@@ -92,7 +92,7 @@ To test on the included testing set, run
  ```
 using Flux
 
-OneDCNN.test <path to saved model>
+MR1dCNN.test <path to saved model>
 ```
 
 You should be able to achieve at or above 95% training accuracy in 10 epochs, and over 90% test accuracy using the demo code and default arguments.
