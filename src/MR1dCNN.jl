@@ -67,7 +67,11 @@ end
 
 # training loss 
 function model_loss(x::A, y::B, model::Model, ρ::T, loc) where {C<:Chain, A<:AbstractArray, B<:AbstractArray, T<:Real}
-    ŷ1, ŷ2, ŷ3  = model(augment(x, ρ, loc))
+    xh = augment(x, ρ, loc)
+    #ŷ1, ŷ2, ŷ3  = model(augment(x, ρ, loc))
+    ŷ1, ŷ2, ŷ3  = model(xh)
+    
+    #ŷ1, ŷ2, ŷ3  = model(x)
     return logitcrossentropy(ŷ1, y) + logitcrossentropy(ŷ2, y) + logitcrossentropy(ŷ3, y)
 end
 
@@ -159,7 +163,8 @@ function train(args::Args, archs)
     end
      
     # load data
-    train_data, val_data = DataUtils.get_train_validation(DataUtils.data_prep(args.train_dir), readdlm(args.train_dir * "/y_train.txt", Int), args.batch_size, args.train_prop, loc)
+    train_data, val_data, T = DataUtils.get_train_validation(DataUtils.data_prep(args.train_dir), readdlm(args.train_dir * "/y_train.txt", Int), args.batch_size, args.train_prop, loc)
+    @show T
 
     # initialize model
     m = build_Model(args.input_dims, archs, args.nclasses, loc, silent=true)
@@ -229,8 +234,8 @@ function train(args::Args, archs)
     end
     if args.save_model
         model_path = abspath(joinpath(args.save_path, "model.bson"))
-        let model = best_model |> cpu, data = train_data |> cpu, args = args
-            BSON.@save model_path model args data
+        let model = best_model |> cpu, data = train_data |> cpu, args = args, transform = T
+            BSON.@save model_path model args data transform
             @info "Best model saved: $(model_path)"
         end
     end
@@ -243,8 +248,9 @@ end
 function test(model_path)
     saved_model = BSON.load(model_path)
     model = load_model(saved_model)
+    T = saved_model[:tform]
 
-    test_data = DataUtils.get_test_set(DataUtils.data_prep(DIR*"/../data/test"), readdlm(DIR*"/../data/test/y_test.txt"), cpu)
+    test_data = DataUtils.get_test_set(DataUtils.data_prep(DIR*"/../data/test"), readdlm(DIR*"/../data/test/y_test.txt"), T, cpu)
     accuracy(test_data, model)
 end
 

@@ -1,11 +1,23 @@
 module DataUtils
 
+using Base: StridedFastContiguousSubArray
 using Flux
 using Flux.Data: DataLoader
 using Random, DelimitedFiles, Distributed
 using ProgressMeter: Progress, next!
+using StatsBase, Statistics
 
 export get_train_validation, get_test_set
+
+function scale_tensor(X)
+    l, m, _, n = size(X)
+    StatsBase.fit(ZScoreTransform, reshape(X, l, m*n))
+end
+
+function transform_tensor!(Transform, X)
+    l, m, _, n = size(X)
+    StatsBase.transform!(Transform, reshape(X, l, m*n))
+end
 
 function create_tensor(X)
     l = length(X)
@@ -25,9 +37,7 @@ function data_prep(data_dir)
     out = Array{Array{Float32}}(undef, length(files))
     progress = Progress(length(files))
     for i = 1:length(files)
-        # data = permutedims(readdlm(data_dir * "/Inertial_Signals/" * files[i], Float32))
-        data = readdlm(data_dir * "/Inertial_Signals/" * files[i], Float32)
-        out[i] = data
+        out[i] = readdlm(data_dir * "/Inertial_Signals/" * files[i], Float32)
         next!(progress)
     end
     return create_tensor(out)
@@ -36,32 +46,34 @@ end
 function get_train_validation(X, Y, batch_size, train_prop, loc, shuffle=true)
     train_prop < 1 ? nothing : error("Validation set must have entries. Please use a train_prop value less than 1.")
     train_prop > 0 ? nothing : error("Training set must have entries. Please use a train_prop value greater than 0.")
-    ind = randperm(length(Y))
 
     if shuffle
-        X = X[:,:,:,ind]
-        Y = Y[ind]
+        ind = randperm(length(Y))
+    else
+        ind = 1:length(Y)
     end
+
+    T = scale_tensor(X)
+    transform_tensor!(T, X)
 
     classes = sort!(unique(Y))
 
     idx = 1:Int(floor(train_prop*length(Y)))
-    X_train = X[:,:,:,idx] |> loc
-    Y_train = Flux.onehotbatch(Y[idx], classes) |> loc
-    X_val = X[:,:,:,last(idx)+1:length(Y)] |> loc
-    Y_val = Flux.onehotbatch(Y[last(idx)+1:length(Y)], classes) |> loc
+    X_train = X[:,:,:,ind][:,:,:,idx] |> loc
+    Y_train = Flux.onehotbatch(Y[ind][idx], classes) |> loc
+    X_val = X[:,:,:,ind][:,:,:,last(idx)+1:length(Y)] |> loc
+    Y_val = Flux.onehotbatch(Y[ind][last(idx)+1:length(Y)], classes) |> loc
 
-    #X_train = reshape(X_train, size(X_train,1), size(X_train,2), 1, size(X_train,3))
     train_set = DataLoader((X_train, Y_train), batchsize=batch_size, shuffle=shuffle)
 
-    #X_val = reshape(X_val, size(X_val, 1), size(X_val,2), 1, size(X_val,3))
     val_set = DataLoader((X_val, Y_val), batchsize=size(Y_val,2), shuffle=shuffle)
 
-    return train_set, val_set
+    return train_set, val_set, T
 end
 
-function get_test_set(X, Y, loc, shuffle=true)
+function get_test_set(X, Y, T, loc, shuffle=true)
     classes = sort!(unique(Y))
+    transform_tensor!(T, X)
     X_test = X |> loc
     Y_test = Flux.onehotbatch(reshape(Y, size(Y, 1)), classes) |> loc
     
