@@ -44,7 +44,7 @@ mutable struct Args
     train_dir::String
     testdir::String
     Args() = new(
-        1e-3, 1e-4, 32, 0.8, 10, 0, true, [9, 128, 1], (1,1,1), 6, 5, 10.0, 10, true, true, "output_" * Dates.format(now(), "Y-mm-dd-HMS"), DIR*"/../data/train", DIR*"/../data/test"
+        1e-3, 1e-4, 32, 0.8, 10, 0, true, [9, 128, 1], (1,1,1), 6, 5, 10.0, 10, false, true, "output_" * Dates.format(now(), "Y-mm-dd-HMS"), DIR*"/../data/train", DIR*"/../data/test"
     )
 end
 
@@ -57,8 +57,8 @@ end
 
 rng = MersenneTwister(args.seed)
 
-function augment(x::A, ρ::T, device) where A<:AbstractArray{T} where T<:Real
-    if device == gpu
+function augment(x::A, ρ::T, loc) where A<:AbstractArray{T} where T<:Real
+    if loc == gpu
         x .+ ρ * CUDA.randn(eltype(x), size(x))
     else
         x .+ ρ * randn(eltype(x), size(x))
@@ -66,9 +66,13 @@ function augment(x::A, ρ::T, device) where A<:AbstractArray{T} where T<:Real
 end
 
 # training loss 
-function model_loss(x::A, y::B, model::Model, ρ::T, device) where {C<:Chain, A<:AbstractArray, B<:AbstractArray, T<:Real}
-    ŷ1, ŷ2, ŷ3  = model(augment(x, ρ, device))
-    l = logitcrossentropy(ŷ1, y) + logitcrossentropy(ŷ2, y) + logitcrossentropy(ŷ3, y)
+function model_loss(x::A, y::B, model::Model, ρ::T, loc) where {C<:Chain, A<:AbstractArray, B<:AbstractArray, T<:Real}
+    xh = augment(x, ρ, loc)
+    #ŷ1, ŷ2, ŷ3  = model(augment(x, ρ, loc))
+    ŷ1, ŷ2, ŷ3  = model(xh)
+    
+    #ŷ1, ŷ2, ŷ3  = model(x)
+    return logitcrossentropy(ŷ1, y) + logitcrossentropy(ŷ2, y) + logitcrossentropy(ŷ3, y)
 end
 
 # loss over data
@@ -84,11 +88,13 @@ end
 
 #accuracy over data
 function accuracy(data::DataLoader, model::Model)
-    acc = 0
+    acc = zero(Float32)
     for (x, y) in data
         out = softmax(sum(model(x)) ./ 3)
-        acc += sum(onecold(out) .== onecold(cpu(y))) * 1 / size(x,4)
+        # acc += sum(onecold(out) .== onecold(cpu(y))) * 1 / size(x,4)
+        acc += sum(onecold(out) .== onecold(y)) * 1 / size(x,4)
     end
+    
     acc/length(data)
 end
 
@@ -120,9 +126,9 @@ function TBCallback(logger, train_data, val_data, model)
   end
 end
 
-function training_function(model, Xs::Flux.Data.DataLoader, params::Flux.Zygote.Params, opt::ADAM, ρ::N, device, progress) where {N<:Real}
+function training_function(model, Xs::Flux.Data.DataLoader, params::Flux.Zygote.Params, opt::ADAM, ρ::N, loc, progress) where {N<:Real}
     for (xs, ys) in Xs
-        train_loss, back = Flux.pullback(() -> model_loss(xs, ys, model, ρ, device), params)
+        train_loss, back = Flux.pullback(() -> model_loss(xs, ys, model, ρ, loc), params)
         grad = back(one(train_loss))
         Flux.Optimise.update!(opt, params, grad)
         next!(progress; showvalues=[(:Loss, train_loss)])
@@ -131,9 +137,15 @@ end
 
 ## model burn-in
 @info "Precompiling training function"
-tm = build_Model([9,128,1], archs, 6, silent = true)
-d = DataLoader((rand(Float32, 9, 128, 1, 1), onehotbatch([2], [1,2,3,4,5,6]))) 
+tm = build_Model([9,128,1], archs, 6, cpu, silent = true)
+d = DataLoader((rand(Float32, 9, 128, 1, 1), onehotbatch([2], [1,2,3,4,5,6])))
 training_function(tm, d, params(tm.model1, tm.model2, tm.model3), ADAM(1e-3), Float32(.1), cpu, Progress(1))
+accuracy(d, tm)
+# # if has_cuda_gpu()
+#     tm_g =  build_Model([9,128,1], archs, 6, gpu, silent = true)
+#     d_g =  DataLoader((rand(Float32, 9, 128, 1, 1) |> gpu, onehotbatch([2], [1,2,3,4,5,6]) |> gpu))
+#     training_function(tm_g, d_g, params(tm.model1, tm.model2, tm.model3), ADAM(1e-3), Float32(.1), gpu, Progress(1))
+# end
 
 @info "Ready. Use fields in 'args' struct to change parameter settings."
 
@@ -143,24 +155,24 @@ function train(args::Args, archs)
     args.seed > 0 && Random.seed!(args.seed)
 
     if args.cuda && has_cuda_gpu()
-        device = gpu
+        loc = gpu
         @info "Training on GPU"
     else
-        device = cpu
+        loc = cpu
         @info "Training on CPU"
     end
      
     # load data
-    train_data, val_data = DataUtils.get_train_validation(DataUtils.data_prep(args.train_dir), readdlm(args.train_dir * "/y_train.txt", Int), args.batch_size, args.train_prop, device)
+    train_data, val_data = DataUtils.get_train_validation(DataUtils.data_prep(args.train_dir), readdlm(args.train_dir * "/y_train.txt", Int), args.batch_size, args.train_prop, loc)
 
     # initialize model
-    m = build_Model(args.input_dims, archs, args.nclasses, silent=true)
-    best_model = build_Model(args.input_dims, deepcopy(archs), args.nclasses, silent=true)
+    m = build_Model(args.input_dims, archs, args.nclasses, loc, silent=true)
+    best_model = build_Model(args.input_dims, deepcopy(archs), args.nclasses, loc, silent=true)
 
     #optimizer
     opt = ADAM(args.η)
 
-    ρ = cast_param(train_data.data[1], args.ρ)
+    ρ = cast_param(train_data.data[1], args.ρ) |> loc
 
     # parameters
     ps = Flux.params(m.model1, m.model2, m.model3)
@@ -176,7 +188,7 @@ function train(args::Args, archs)
     #initialize tracking of accuracy and improvement
     best_acc = 0.0
     last_improvement = 0
-    if device == gpu && CUDA.functional()
+    if loc == gpu && CUDA.functional()
         augment(randn(Float32, 2, 4) |> gpu, 0.1f0, gpu)
     end
 
@@ -187,7 +199,7 @@ function train(args::Args, archs)
         @info "Epoch $(epoch)"
         progress = Progress(length(train_data))
 
-        training_function(m, train_data, ps, opt, ρ, device, progress)
+        training_function(m, train_data, ps, opt, ρ, loc, progress)
 
         # calculate accuracy on validation set
         vacc = accuracy(val_data, m)
@@ -226,7 +238,7 @@ function train(args::Args, archs)
             @info "Best model saved: $(model_path)"
         end
     end
-    if device == gpu
+    if loc == gpu
         CUDA.reclaim()
     end
     return nothing

@@ -64,12 +64,12 @@ function build_model(input_size::Array{T,1}, arch::NamedTuple, nclasses::Int ; s
     return Chain(l...)
 end
 
-function build_Model(input_size::Array{T,1}, archs::Array, nclasses::Int ; silent::Bool = false) where T<:Int  
+function build_Model(input_size::Array{T,1}, archs::Array, nclasses::Int, loc ; silent::Bool = false) where T<:Int  
     out = []
     for arch in archs
         push!(out, build_model(input_size, arch, nclasses; silent))
     end
-    Model(out[1], out[2], out[3])
+    Model(out[1] |> loc, out[2] |> loc, out[3] |> loc)
 end
 
 function load_model(m)
