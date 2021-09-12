@@ -33,7 +33,6 @@ mutable struct Args
     seed::Int64 # random seed
     cuda::Bool  # attempt to use GPU
     input_dims::Array{Int64}  # input size
-    output_dim::Tuple{Int64, Int64, Int64}  # output size (final dims of conv layers)
     nclasses::Int64  # classes
     lr_patience::Int64  # non-improving iterations before learning rate drop
     γ::Float32  # amount to drop lr (1/γ)
@@ -46,7 +45,7 @@ mutable struct Args
     train_dir::String
     testdir::String
     Args() = new(
-        1e-3, 1e-4, 32, 0.8, 10, 0, true, [9, 128, 1], (1,1,1), 6, 5, 10.0, 10, true, true, false, true, "output_" * Dates.format(now(), "Y-mm-dd-HMS"), DIR*"/../data/train", DIR*"/../data/test"
+        1e-3, 1e-4, 32, 0.8, 10, 0, true, [9, 128, 1], 6, 5, 10.0, 10, true, true, false, true, "output_" * Dates.format(now(), "Y-mm-dd-HMS"), DIR*"/../data/train", DIR*"/../data/test"
     )
 end
 
@@ -149,6 +148,7 @@ accuracy(d, tm)
 #     training_function(tm_g, d_g, params(tm.model1, tm.model2, tm.model3), ADAM(1e-3), Float32(.1), gpu, Progress(1))
 # end
 
+
 @info "Ready. Use fields in 'args' struct to change parameter settings."
 
 # training function
@@ -246,12 +246,12 @@ function train(args::Args, archs)
     return nothing
 end
 
-function test(model_path)
+function test(model_path, scale=true, shuffle=true)
     saved_model = BSON.load(model_path)
     model = load_model(saved_model)
     T = saved_model[:transform]
 
-    test_data = DataUtils.get_test_set(DataUtils.data_prep(DIR*"/../data/test"), readdlm(DIR*"/../data/test/y_test.txt"), T, cpu)
+    test_data = DataUtils.get_test_set(DataUtils.data_prep(DIR*"/../data/test"), readdlm(DIR*"/../data/test/y_test.txt"), T, cpu, scale, shuffle)
     accuracy(test_data, model)
 end
 

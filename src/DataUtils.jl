@@ -33,7 +33,7 @@ end
 
 function data_prep(data_dir)
     files = readdir(data_dir * "/Inertial_Signals")
-    @info "Getting data..."
+    @info "Processing data..."
     out = Array{Array{Float32}}(undef, length(files))
     progress = Progress(length(files))
     for i = 1:length(files)
@@ -73,9 +73,11 @@ function get_train_validation(X, Y, batch_size, train_prop, loc, scale=true, shu
     return train_set, val_set, T
 end
 
-function get_test_set(X, Y, T, loc, shuffle=true)
+function get_test_set(X, Y, T, loc, scale, shuffle)
     classes = sort!(unique(Y))
-    transform_tensor!(T, X)
+    if scale
+        transform_tensor!(T, X)
+    end
     X_test = X |> loc
     Y_test = Flux.onehotbatch(reshape(Y, size(Y, 1)), classes) |> loc
     
