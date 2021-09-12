@@ -20,7 +20,7 @@ using Random, Dates, DelimitedFiles
 #load data utilities for wrangling datasets and model building
 include("DataUtils.jl")
 include("ModelUtilities.jl")
-include("Arch.jl")
+include(DIR * "/../arch/Arch.jl")
 
 export Args, train, args, archs, test
 

@@ -25,7 +25,7 @@ In this example, the data are structured as a 4th-order tensor of ***features***
 Train/test split and various other parameters can be adjusted via an arguments struct.
 
 Training data can be logged using
-TensorBoardLogger to facilitate diagnostics using Tensorboard.  This feature is on by default and can be changed in the arguments struct.
+TensorBoardLogger to facilitate diagnostics using Tensorboard.  This feature is off by default and can be changed in the arguments struct.
 
 ## Usage
 
@@ -60,7 +60,7 @@ Arguments are in an `Args` struct defined in `MR1dCNN.jl`.  When loaded, the `ar
 
 `args.epochs = 20`.
 
-The model architecture is contained in an array of named tuples of `LayerDef` structs defined in `ModelUtilities.jl`. The models architectures are defined in `Arch.jl`. To construct your own model architecture to use with the demo, use `Arch.jl` and `createArch()`.  The `LayerDef` constructor arguments can be found in `ModelUtilities.jl`.  For example, to change model definitons, edit `Arch.jl` to reflect the destired changes. Then save and run
+The model architecture is contained in an array of named tuples of `LayerDef` structs defined in `src/ModelUtilities.jl`. The models architectures are defined in `arch/Arch.jl`. To construct your own model architecture to use with the demo, use `Arch.jl` and `createArch()`.  The `LayerDef` constructor arguments can be found in `ModelUtilities.jl`.  For example, to change model definitons, edit `Arch.jl` to reflect the destired changes. Then save and run
 
 `createArch()`.
 
@@ -92,5 +92,6 @@ using Flux, Random
 
 MR1dCNN.test("<path to saved model>")
 ```
+The test function takes the ```scale``` argument to use the saved scaling transform to scale the testing data. Please ensure that if you chose not to scale data during training, this parameter must be set tp ```false```.
 
 You should be able to achieve at or above 95% training accuracy in 10 epochs, and over 90% test accuracy using the demo code and default arguments.
