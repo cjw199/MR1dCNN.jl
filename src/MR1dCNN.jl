@@ -127,7 +127,7 @@ function TBCallback(logger, train_data, val_data, model)
   end
 end
 
-function training_function(model, Xs::Flux.Data.DataLoader, params::Flux.Zygote.Params, opt::ADAM, ρ::N, loc, progress) where {N<:Real}
+function training_function(model::Model, Xs::Flux.Data.DataLoader, params::Flux.Zygote.Params, opt::ADAM, ρ::N, loc, progress) where {N<:Real}
     for (xs, ys) in Xs
         train_loss, back = Flux.pullback(() -> model_loss(xs, ys, model, ρ, loc), params)
         grad = back(one(train_loss))
@@ -246,7 +246,7 @@ function train(args::Args, archs)
     return nothing
 end
 
-function test(model_path, scale=true, shuffle=true)
+function test(model_path::String, scale::Bool=true, shuffle::Bool=true)
     saved_model = BSON.load(model_path)
     model = load_model(saved_model)
     T = saved_model[:transform]

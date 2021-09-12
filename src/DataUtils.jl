@@ -1,6 +1,6 @@
 module DataUtils
 
-using Base: StridedFastContiguousSubArray
+using Base: StridedFastContiguousSubArray, AbstractFloat
 using Flux
 using Flux.Data: DataLoader
 using Random, DelimitedFiles, Distributed
@@ -9,17 +9,17 @@ using StatsBase, Statistics
 
 export get_train_validation, get_test_set
 
-function scale_tensor(X)
+function scale_tensor(X::T) where {T<:Array{F} where F<:AbstractFloat}
     l, m, _, n = size(X)
     StatsBase.fit(ZScoreTransform, reshape(X, l, m*n))
 end
 
-function transform_tensor!(Transform, X)
+function transform_tensor!(Transform::TF, X::T) where {TF<:AbstractDataTransform, T<:Array{F} where F<:AbstractFloat}
     l, m, _, n = size(X)
     StatsBase.transform!(Transform, reshape(X, l, m*n))
 end
 
-function create_tensor(X)
+function create_tensor(X::T) where {T<:Array{A} where A<:Array{F} where F<:AbstractFloat}
     l = length(X)
     m, n = size(X[1])
     out = Array{eltype(X[1])}(undef, l, n, 1, m)
@@ -31,7 +31,7 @@ function create_tensor(X)
     return out
 end
 
-function data_prep(data_dir)
+function data_prep(data_dir::String)
     files = readdir(data_dir * "/Inertial_Signals")
     @info "Processing data..."
     out = Array{Array{Float32}}(undef, length(files))
@@ -43,7 +43,7 @@ function data_prep(data_dir)
     return create_tensor(out)
 end
 
-function get_train_validation(X, Y, batch_size, train_prop, loc, scale=true, shuffle=true)
+function get_train_validation(X::T1, Y::T2, batch_size::Int, train_prop::F, loc, scale::Bool=true, shuffle::Bool=true) where {T1<:Array{F1} where F1<:AbstractFloat, T2<:Array{Int}, F<:AbstractFloat}
     train_prop < 1 ? nothing : error("Validation set must have entries. Please use a train_prop value less than 1.")
     train_prop > 0 ? nothing : error("Training set must have entries. Please use a train_prop value greater than 0.")
 
