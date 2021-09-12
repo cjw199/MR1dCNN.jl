@@ -43,7 +43,7 @@ function data_prep(data_dir)
     return create_tensor(out)
 end
 
-function get_train_validation(X, Y, batch_size, train_prop, loc, shuffle=true)
+function get_train_validation(X, Y, batch_size, train_prop, loc, scale=true, shuffle=true)
     train_prop < 1 ? nothing : error("Validation set must have entries. Please use a train_prop value less than 1.")
     train_prop > 0 ? nothing : error("Training set must have entries. Please use a train_prop value greater than 0.")
 
@@ -54,7 +54,9 @@ function get_train_validation(X, Y, batch_size, train_prop, loc, shuffle=true)
     end
 
     T = scale_tensor(X)
-    transform_tensor!(T, X)
+    if scale
+        transform_tensor!(T, X)
+    end
 
     classes = sort!(unique(Y))
 

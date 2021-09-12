@@ -38,13 +38,15 @@ mutable struct Args
     lr_patience::Int64  # non-improving iterations before learning rate drop
     γ::Float32  # amount to drop lr (1/γ)
     convergence::Int64 # non-improving iterations to quit
+    shuffle::Bool #whether to shuffle data before splitting
+    scale::Bool #whether to apply Z score scaling
     tblogging::Bool  # use tensorboard
     save_model::Bool
     save_path::String  # results path
     train_dir::String
     testdir::String
     Args() = new(
-        1e-3, 1e-4, 32, 0.8, 10, 0, true, [9, 128, 1], (1,1,1), 6, 5, 10.0, 10, false, true, "output_" * Dates.format(now(), "Y-mm-dd-HMS"), DIR*"/../data/train", DIR*"/../data/test"
+        1e-3, 1e-4, 32, 0.8, 10, 0, true, [9, 128, 1], (1,1,1), 6, 5, 10.0, 10, true, true, false, true, "output_" * Dates.format(now(), "Y-mm-dd-HMS"), DIR*"/../data/train", DIR*"/../data/test"
     )
 end
 
@@ -163,8 +165,7 @@ function train(args::Args, archs)
     end
      
     # load data
-    train_data, val_data, T = DataUtils.get_train_validation(DataUtils.data_prep(args.train_dir), readdlm(args.train_dir * "/y_train.txt", Int), args.batch_size, args.train_prop, loc)
-    @show T
+    train_data, val_data, T = DataUtils.get_train_validation(DataUtils.data_prep(args.train_dir), readdlm(args.train_dir * "/y_train.txt", Int), args.batch_size, args.train_prop, loc, args.scale, args.shuffle)
 
     # initialize model
     m = build_Model(args.input_dims, archs, args.nclasses, loc, silent=true)
@@ -248,7 +249,7 @@ end
 function test(model_path)
     saved_model = BSON.load(model_path)
     model = load_model(saved_model)
-    T = saved_model[:tform]
+    T = saved_model[:transform]
 
     test_data = DataUtils.get_test_set(DataUtils.data_prep(DIR*"/../data/test"), readdlm(DIR*"/../data/test/y_test.txt"), T, cpu)
     accuracy(test_data, model)
