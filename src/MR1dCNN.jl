@@ -67,11 +67,7 @@ end
 
 # training loss 
 function model_loss(x::A, y::B, model::Model, ρ::T, loc) where {C<:Chain, A<:AbstractArray, B<:AbstractArray, T<:Real}
-    xh = augment(x, ρ, loc)
-    #ŷ1, ŷ2, ŷ3  = model(augment(x, ρ, loc))
-    ŷ1, ŷ2, ŷ3  = model(xh)
-    
-    #ŷ1, ŷ2, ŷ3  = model(x)
+    ŷ1, ŷ2, ŷ3  = model(augment(x, ρ, loc))
     return logitcrossentropy(ŷ1, y) + logitcrossentropy(ŷ2, y) + logitcrossentropy(ŷ3, y)
 end
 
