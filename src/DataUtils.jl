@@ -46,11 +46,12 @@ end
 function get_train_validation(X::T1, Y::T2, batch_size::Int, train_prop::F, loc, scale::Bool=true, shuffle::Bool=true) where {T1<:Array{F1} where F1<:AbstractFloat, T2<:Array{Int}, F<:AbstractFloat}
     train_prop < 1 ? nothing : error("Validation set must have entries. Please use a train_prop value less than 1.")
     train_prop > 0 ? nothing : error("Training set must have entries. Please use a train_prop value greater than 0.")
+    l = length(Y)
 
     if shuffle
-        ind = randperm(length(Y))
+        ind = randperm(l))
     else
-        ind = 1:length(Y)
+        ind = 1:l
     end
 
     T = scale_tensor(X)
@@ -60,11 +61,11 @@ function get_train_validation(X::T1, Y::T2, batch_size::Int, train_prop::F, loc,
 
     classes = sort!(unique(Y))
 
-    idx = 1:Int(floor(train_prop*length(Y)))
+    idx = 1:Int(floor(train_prop*l)))
     X_train = X[:,:,:,ind][:,:,:,idx] |> loc
     Y_train = Flux.onehotbatch(Y[ind][idx], classes) |> loc
-    X_val = X[:,:,:,ind][:,:,:,last(idx)+1:length(Y)] |> loc
-    Y_val = Flux.onehotbatch(Y[ind][last(idx)+1:length(Y)], classes) |> loc
+    X_val = X[:,:,:,ind][:,:,:,last(idx)+1:l] |> loc
+    Y_val = Flux.onehotbatch(Y[ind][last(idx)+1:l)], classes) |> loc
 
     train_set = DataLoader((X_train, Y_train), batchsize=batch_size, shuffle=shuffle)
 
@@ -81,7 +82,6 @@ function get_test_set(X, Y, T, loc, scale, shuffle)
     X_test = X |> loc
     Y_test = Flux.onehotbatch(reshape(Y, size(Y, 1)), classes) |> loc
     
-    #X_test = reshape(X_test, size(X_test,1), size(X_test,2), 1, size(X_test,3))
     test_set = DataLoader((X_test, Y_test), batchsize=size(Y, 2), shuffle=shuffle)
 
     return test_set

@@ -143,8 +143,6 @@ accuracy(d, tm)
 #     d_g =  DataLoader((rand(Float32, 9, 128, 1, 1) |> gpu, onehotbatch([2], [1,2,3,4,5,6]) |> gpu))
 #     training_function(tm_g, d_g, params(tm.model1, tm.model2, tm.model3), ADAM(1e-3), Float32(.1), gpu, Progress(1))
 # end
-
-
 @info "Ready. Use fields in 'args' struct to change parameter settings."
 
 # training function
