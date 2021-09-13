@@ -49,7 +49,7 @@ function get_train_validation(X::T1, Y::T2, batch_size::Int, train_prop::F, loc,
     l = length(Y)
 
     if shuffle
-        ind = randperm(l))
+        ind = randperm(l)
     else
         ind = 1:l
     end
@@ -61,11 +61,11 @@ function get_train_validation(X::T1, Y::T2, batch_size::Int, train_prop::F, loc,
 
     classes = sort!(unique(Y))
 
-    idx = 1:Int(floor(train_prop*l)))
+    idx = 1:Int(floor(train_prop*l))
     X_train = X[:,:,:,ind][:,:,:,idx] |> loc
     Y_train = Flux.onehotbatch(Y[ind][idx], classes) |> loc
     X_val = X[:,:,:,ind][:,:,:,last(idx)+1:l] |> loc
-    Y_val = Flux.onehotbatch(Y[ind][last(idx)+1:l)], classes) |> loc
+    Y_val = Flux.onehotbatch(Y[ind][last(idx)+1:l], classes) |> loc
 
     train_set = DataLoader((X_train, Y_train), batchsize=batch_size, shuffle=shuffle)
 
