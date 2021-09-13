@@ -16,15 +16,15 @@ mutable struct LayerDef{T, P, A}
     )
 end
 
-mutable struct Model
-    model1
-    model2
-    model3
+mutable struct Model{T}
+    paths::T
 end
 
-function (M::Model)(x)
-    return M.model1(x), M.model2(x), M.model3(x)
-end
+Model(paths...) = Model(paths)
+
+Flux.@functor Model
+
+(m::Model)(x::AbstractArray) = map(f -> f(x), m.paths)
 
 function create_model_arch(layers::LayerDef...)::NamedTuple
     names = []
@@ -69,9 +69,5 @@ function build_Model(input_size::Array{T,1}, archs::Array, nclasses::Int, loc ; 
     for arch in archs
         push!(out, build_model(input_size, arch, nclasses; silent))
     end
-    Model(out[1] |> loc, out[2] |> loc, out[3] |> loc)
-end
-
-function load_model(m)
-    Model(m[:model].model1, m[:model].model2, m[:model].model3)
+    Model(tuple(out...) |> loc)
 end

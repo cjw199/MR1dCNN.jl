@@ -15,7 +15,7 @@ using Flux: onehotbatch, onecold
 using Logging: with_logger
 using ProgressMeter: Progress, next!
 using TensorBoardLogger: TBLogger, tb_overwrite
-using Random, Dates, DelimitedFiles
+using Random, Dates, DelimitedFiles, Statistics
 
 #load data utilities for wrangling datasets and model building
 include("DataUtils.jl")
@@ -68,16 +68,16 @@ end
 
 # training loss 
 function model_loss(x::A, y::B, model::Model, ρ::T, loc) where {C<:Chain, A<:AbstractArray, B<:AbstractArray, T<:Real}
-    ŷ1, ŷ2, ŷ3  = model(augment(x, ρ, loc))
-    return logitcrossentropy(ŷ1, y) + logitcrossentropy(ŷ2, y) + logitcrossentropy(ŷ3, y)
+    ŷs  = model(augment(x, ρ, loc))
+    mean(logitcrossentropy(ŷᵢ, y) for ŷᵢ in ŷs)
 end
 
 # loss over data
 function total_loss(data::DataLoader, model::Model)
     l = 0f0
     for (x, y) in data
-        ŷ1, ŷ2, ŷ3  = model(x)
-        l += logitcrossentropy(ŷ1, y) + logitcrossentropy(ŷ2, y) + logitcrossentropy(ŷ3, y)
+        ŷs  = model(x)
+        l += mean(logitcrossentropy(ŷᵢ, y) for ŷᵢ in ŷs)
     end
     l = l/length(data)
     return l
@@ -87,7 +87,8 @@ end
 function accuracy(data::DataLoader, model::Model)
     acc = zero(Float32)
     for (x, y) in data
-        out = softmax(sum(model(x)) ./ 3)
+        ŷs = model(x)
+        out = softmax(mean(ŷs))
         # acc += sum(onecold(out) .== onecold(cpu(y))) * 1 / size(x,4)
         acc += sum(onecold(out) .== onecold(y)) * 1 / size(x,4)
     end
@@ -136,7 +137,7 @@ end
 @info "Precompiling training function"
 tm = build_Model([9,128,1], archs, 6, cpu, silent = true)
 d = DataLoader((rand(Float32, 9, 128, 1, 1), onehotbatch([2], [1,2,3,4,5,6])))
-training_function(tm, d, params(tm.model1, tm.model2, tm.model3), ADAM(1e-3), Float32(.1), cpu, Progress(1))
+training_function(tm, d, params(tm), ADAM(1e-3), Float32(.1), cpu, Progress(1))
 accuracy(d, tm)
 # # if has_cuda_gpu()
 #     tm_g =  build_Model([9,128,1], archs, 6, gpu, silent = true)
@@ -171,7 +172,7 @@ function train(args::Args, archs)
     ρ = cast_param(train_data.data[1], args.ρ) |> loc
 
     # parameters
-    ps = Flux.params(m.model1, m.model2, m.model3)
+    ps = Flux.params(m)
 
     # make path for model storage and log output
     !ispath(args.save_path) && mkpath(args.save_path)
@@ -242,7 +243,7 @@ end
 
 function test(model_path::String, scale::Bool=true, shuffle::Bool=true)
     saved_model = BSON.load(model_path)
-    model = load_model(saved_model)
+    model = saved_model[:model]
     T = saved_model[:transform]
 
     test_data = DataUtils.get_test_set(DataUtils.data_prep(DIR*"/../data/test"), readdlm(DIR*"/../data/test/y_test.txt"), T, cpu, scale, shuffle)
