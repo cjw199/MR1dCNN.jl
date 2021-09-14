@@ -51,8 +51,8 @@ For a quick start with default parameters and model architecture, the demo itsel
 
 `train(args, archs)`.
 
-This training function takes two arguments: the training parameters object (here, `args`) and the model architecture definition (here, `archs`).
-The data will be automatically loaded and transformed, training executed, and (provided `args.save_model` remains set to `true`) save the best-performing model to an output directory.  It will also (provided `args.tblogging` remains set to `true`) log model parameters and performance data on a per-epoch basis to a Tensorboard log file.
+This training function takes one argument: the training parameters object (here, `args`). 
+The data will be automatically loaded and transformed, training executed, and (provided `args.save_model` remains set to `true`) save the best-performing model to an output directory.  It will also (if `args.tblogging` is set to `true`) log model parameters and performance data on a per-epoch basis to a Tensorboard log file.
 
 #### Basic Usage
 
@@ -60,11 +60,7 @@ Arguments are in an `Args` struct defined in `MR1dCNN.jl`.  When loaded, the `ar
 
 `args.epochs = 20`.
 
-The model architecture is contained in an array of named tuples of `LayerDef` structs defined in `src/ModelUtilities.jl`. The models architectures are defined in `arch/Arch.jl`. To construct your own model architecture to use with the demo, use `Arch.jl` and `createArch()`.  The `LayerDef` constructor arguments can be found in `ModelUtilities.jl`.  For example, to change model definitons, edit `Arch.jl` to reflect the destired changes. Then save and run
-
-`createArch()`.
-
-Then pass the `archs` array as the second argument to `train`.
+The model architecture is defined in ```arch/arch.json```.  This file contains a definition for each model in Flux syntax as a string.  To change or use your own model architectures, just edit the ```arch.json``` file with the appropriate changes.  It is advised to ensure that any changes will work on the data (e.g., that layer parameters as compatible with the shape of the data).
 
 #### TensoBoard Logging
 

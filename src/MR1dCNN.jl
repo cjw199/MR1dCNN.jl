@@ -1,8 +1,9 @@
 module MR1dCNN
 
 const DIR = @__DIR__
+const ARCH_PATH = DIR * "/../arch/arch.json"
 using Pkg
-Pkg.activate(DIR*"/..")
+Pkg.activate(DIR * "/..")
 Pkg.status()
 
 @info "Loading modules..."
@@ -15,14 +16,13 @@ using Flux: onehotbatch, onecold
 using Logging: with_logger
 using ProgressMeter: Progress, next!
 using TensorBoardLogger: TBLogger, tb_overwrite
-using Random, Dates, DelimitedFiles, Statistics
+using Random, Dates, DelimitedFiles, Statistics, JSON
 
 #load data utilities for wrangling datasets and model building
 include("DataUtils.jl")
 include("ModelUtilities.jl")
-include(DIR * "/../arch/Arch.jl")
 
-export Args, train, args, archs, test
+export Args, train, args, test
 
 mutable struct Args
     η::Float32 # learning rate
@@ -50,7 +50,6 @@ mutable struct Args
 end
 
 args = Args()
-archs = getArch()
 
 function cast_param(x::A, param::T) where A<:AbstractArray{T} where T <: Real
     convert(eltype(x), param)
@@ -89,10 +88,8 @@ function accuracy(data::DataLoader, model::Model)
     for (x, y) in data
         ŷs = model(x)
         out = softmax(mean(ŷs))
-        # acc += sum(onecold(out) .== onecold(cpu(y))) * 1 / size(x,4)
         acc += sum(onecold(out) .== onecold(y)) * 1 / size(x,4)
     end
-    
     acc/length(data)
 end
 
@@ -133,22 +130,16 @@ function training_function(model::Model, Xs::Flux.Data.DataLoader, params::Flux.
     end
 end
 
-## model burn-in
-@info "Precompiling training function"
-tm = build_Model([9,128,1], archs, 6, cpu, silent = true)
-d = DataLoader((rand(Float32, 9, 128, 1, 1), onehotbatch([2], [1,2,3,4,5,6])))
+@info "Warming up training function..."
+tm = build_Model(ARCH_PATH, args.input_dims, 6)
+d = DataLoader((rand(Float32, size(tm.paths[1].layers[1].layers[1].weight, 1), 128, 1, 1), onehotbatch([2], [1,2,3,4,5,6])))
 training_function(tm, d, params(tm), ADAM(1e-3), Float32(.1), cpu, Progress(1))
 accuracy(d, tm)
-# # if has_cuda_gpu()
-#     tm_g =  build_Model([9,128,1], archs, 6, gpu, silent = true)
-#     d_g =  DataLoader((rand(Float32, 9, 128, 1, 1) |> gpu, onehotbatch([2], [1,2,3,4,5,6]) |> gpu))
-#     training_function(tm_g, d_g, params(tm.model1, tm.model2, tm.model3), ADAM(1e-3), Float32(.1), gpu, Progress(1))
-# end
+
 @info "Ready. Use fields in 'args' struct to change parameter settings."
 
 # training function
-function train(args::Args, archs)
-    #args = Args()
+function train(args::Args)
     args.seed > 0 && Random.seed!(args.seed)
 
     if args.cuda && has_cuda_gpu()
@@ -163,9 +154,8 @@ function train(args::Args, archs)
     train_data, val_data, T = DataUtils.get_train_validation(DataUtils.data_prep(args.train_dir), readdlm(args.train_dir * "/y_train.txt", Int), args.batch_size, args.train_prop, loc, args.scale, args.shuffle)
 
     # initialize model
-    m = build_Model(args.input_dims, archs, args.nclasses, loc, silent=true)
-    best_model = build_Model(args.input_dims, deepcopy(archs), args.nclasses, loc, silent=true)
-
+    m = build_Model(DIR * "/../arch/arch.json", args.input_dims, args.nclasses) |> loc
+    best_model = build_Model(DIR * "/../arch/arch.json", args.input_dims, args.nclasses)
     #optimizer
     opt = ADAM(args.η)
 
